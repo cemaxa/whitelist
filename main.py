@@ -1,9 +1,9 @@
 import requests
 import re
 import base64
-from urllib.parse import urlparse, quote, unquote
+import time
+from urllib.parse import urlparse, quote
 
-# Расширенный список источников
 SOURCES = [
     "https://raw.githubusercontent.com/Temnuk/naabuzil/main/whitelist_full",
     "https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt",
@@ -13,17 +13,25 @@ SOURCES = [
 ]
 OUTPUT_FILE = "scr.txt"
 
+# Кэш для стран, чтобы не запрашивать один IP дважды
+country_cache = {}
+
 def get_country_flag(ip):
+    if not ip: return "🌐"
+    if ip in country_cache: return country_cache[ip]
+    
     try:
-        # Быстрая проверка страны без лишних задержек
         resp = requests.get(f"http://ip-api.com/json/{ip}", timeout=2).json()
         code = resp.get("countryCode", "UN")
-        return "".join(chr(127397 + ord(c)) for c in code)
+        flag = "🌐" if code == "UN" else "".join(chr(127397 + ord(c)) for c in code)
+        
+        country_cache[ip] = flag
+        time.sleep(1.4) # Пауза, чтобы бесплатный ip-api не забанил нас
+        return flag
     except:
         return "🌐"
 
 def safe_decode(data):
-    """Декодирует base64, если данные в нем, иначе возвращает текст"""
     try:
         return base64.b64decode(data).decode('utf-8')
     except:
@@ -38,40 +46,42 @@ def process():
         except:
             continue
 
-    # Ищем все возможные протоколы
-    found_keys = re.findall(r'(vless|vmess|ss|trojan)://[^\s]+', all_raw_text)
+    # ИСПРАВЛЕНИЕ: Теперь регулярка захватывает всю ссылку от начала до конца
+    found_keys = re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', all_raw_text)
     unique_keys = list(set(found_keys))
     
-    print(f"Найдено ключей: {len(unique_keys)}")
+    print(f"Найдено уникальных ключей: {len(unique_keys)}")
     
     processed_list = []
-    for key in unique_keys:
+    # Ограничим обработку первыми 150 ключами, чтобы GitHub не прервал долгий процесс
+    for key in unique_keys[:150]:
         try:
-            # Разделяем основную часть и старое название
-            if "#" in key:
-                base_part = key.split("#")[0]
-            else:
-                base_part = key
+            base_part = key.split("#")[0]
             
-            # Извлекаем IP для флага
+            # У VMESS внутри зашифрован JSON, его сложно быстро распарсить,
+            # поэтому ставим ему стандартный флаг
+            if key.startswith("vmess://"):
+                new_name = "🌐 VMESS | Белый Семаха"
+                processed_list.append(f"{base_part}#{quote(new_name)}")
+                continue
+                
+            # Парсим остальные протоколы
             parsed = urlparse(base_part)
             host = parsed.hostname
             
-            # Если это vmess, там внутри json, пропустим сложную логику флага для них пока
-            flag = get_country_flag(host) if host and not host.isdigit() else "📍"
+            flag = get_country_flag(host)
             proto = parsed.scheme.upper()
             
-            # Формируем новое название
             new_name = f"{flag} {proto} | Белый Семаха"
             processed_list.append(f"{base_part}#{quote(new_name)}")
-        except:
+            
+        except Exception:
             continue
 
-    # Сохраняем результат (даже если пинг не проверяли, чтобы файл не был пустым)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write("\n".join(processed_list))
     
-    print(f"Сохранено в {OUTPUT_FILE}: {len(processed_list)} шт.")
+    print(f"Сохранено рабочих ссылок: {len(processed_list)}")
 
 if __name__ == "__main__":
     process()
