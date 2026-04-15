@@ -2,6 +2,7 @@ import requests
 import re
 import base64
 import time
+import random
 from urllib.parse import urlparse, quote
 
 SOURCES = [
@@ -13,8 +14,10 @@ SOURCES = [
 ]
 OUTPUT_FILE = "scr.txt"
 
-# Кэш для стран, чтобы не запрашивать один IP дважды
 country_cache = {}
+
+# Твой личный набор эмодзи для разнообразия
+EMOJIS = ["🚀", "⚡", "🔥", "💎", "✨", "🛡️", "🔮", "🎯", "👑", "🛰️", "👾"]
 
 def get_country_flag(ip):
     if not ip: return "🌐"
@@ -26,7 +29,7 @@ def get_country_flag(ip):
         flag = "🌐" if code == "UN" else "".join(chr(127397 + ord(c)) for c in code)
         
         country_cache[ip] = flag
-        time.sleep(1.4) # Пауза, чтобы бесплатный ip-api не забанил нас
+        time.sleep(1.4)
         return flag
     except:
         return "🌐"
@@ -46,42 +49,39 @@ def process():
         except:
             continue
 
-    # ИСПРАВЛЕНИЕ: Теперь регулярка захватывает всю ссылку от начала до конца
     found_keys = re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', all_raw_text)
     unique_keys = list(set(found_keys))
     
-    print(f"Найдено уникальных ключей: {len(unique_keys)}")
-    
     processed_list = []
-    # Ограничим обработку первыми 150 ключами, чтобы GitHub не прервал долгий процесс
+    counter = 1 # Запускаем счетчик для нумерации серверов
+    
     for key in unique_keys[:150]:
         try:
             base_part = key.split("#")[0]
+            emoji = random.choice(EMOJIS) # Выбираем случайный эмодзи
             
-            # У VMESS внутри зашифрован JSON, его сложно быстро распарсить,
-            # поэтому ставим ему стандартный флаг
             if key.startswith("vmess://"):
-                new_name = "🌐 VMESS | Белый Семаха"
+                new_name = f"🌐 VMESS {emoji} Семаха [{counter}]"
                 processed_list.append(f"{base_part}#{quote(new_name)}")
+                counter += 1
                 continue
                 
-            # Парсим остальные протоколы
             parsed = urlparse(base_part)
             host = parsed.hostname
             
             flag = get_country_flag(host)
             proto = parsed.scheme.upper()
             
-            new_name = f"{flag} {proto} | Белый Семаха"
+            # Собираем красивое и короткое имя
+            new_name = f"{flag} {proto} {emoji} Семаха [{counter}]"
             processed_list.append(f"{base_part}#{quote(new_name)}")
+            counter += 1
             
         except Exception:
             continue
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write("\n".join(processed_list))
-    
-    print(f"Сохранено рабочих ссылок: {len(processed_list)}")
 
 if __name__ == "__main__":
     process()
