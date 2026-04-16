@@ -1,9 +1,9 @@
-name: update keys . . .
+name: key updater
 
 on:
   schedule:
-    - cron: '0 */4 * * *'
-  workflow_dispatch:
+    - cron: '*/30 * * * *' # Запуск каждые 30 минут
+  workflow_dispatch: # Возможность запустить вручную
 
 permissions:
   contents: write
@@ -23,17 +23,13 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Execute scripts
-        run: |
-          python main.py
-          python public_main.py
+      - name: Run Monitor
+        run: python public_main.py
 
-      - name: Commit and Push
+      - name: Commit changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add scr.txt public_scr.txt
-          # Коммитим, если есть изменения
-          git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M')" || exit 0
-          # Пушим с флагом --force-with-lease, чтобы точно перетереть возможные затыки
-          git push origin main --force-with-lease
+          git add public_scr.txt last_id.txt
+          git commit -m "Update keys from post $(cat last_id.txt)" || exit 0
+          git push origin main
