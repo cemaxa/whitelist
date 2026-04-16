@@ -1,4 +1,4 @@
-name: Update VPN Keys
+name: Update VPN Keys / RU-whitelist
 
 on:
   schedule:
