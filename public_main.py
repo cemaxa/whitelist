@@ -12,7 +12,7 @@ SOURCES = [
 ]
 
 OUTPUT_FILE = "public_scr.txt"
-HEADER = "# profile-title: 🌐 Public VPN | @freedomprotocol_bot\n"
+HEADER = "# profile-title: 🌐 Публичный Семаха\n"
 
 def get_ping(host, port):
     try:
