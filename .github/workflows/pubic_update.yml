@@ -1,5 +1,4 @@
-name: Update Public Proxy Keys
-
+name: Update VPN Keys / Public-keys
 on:
   schedule:
     - cron: '30 */4 * * *' # 4hrs autoupdate +30min СДВИГ
