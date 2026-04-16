@@ -11,11 +11,13 @@ SOURCES = [
     "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/sub_merge.txt"
 ]
 OUTPUT_FILE = "public_scr.txt"
+#output header
+HEADER = "# profile-title: 🌐 Общедоступный VPN | PUBLIC | @freedomprotocol_bot\n"
 
 def get_ping(host, port):
     try:
         start = time.time()
-        socket.setdefaulttimeout(1.5)
+        socket.setdefaulttimeout(1.2)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
         s.close()
@@ -39,7 +41,11 @@ def process():
     for url in SOURCES:
         try:
             r = requests.get(url, timeout=10)
-            all_raw_text += "\n" + (base64.b64decode(r.text).decode('utf-8') if "://" not in r.text else r.text)
+            text = r.text
+            if "://" not in text:
+                try: text = base64.b64decode(text).decode('utf-8')
+                except: pass
+            all_raw_text += "\n" + text
         except: continue
 
     found_keys = list(set(re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', all_raw_text)))
@@ -68,7 +74,8 @@ def process():
         processed_list.append(f"{item['key']}#{quote(new_name)}")
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(processed_list))
+        #pos
+        f.write(HEADER + "\n".join(processed_list))
 
 if __name__ == "__main__":
     process()
