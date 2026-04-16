@@ -5,7 +5,7 @@ import time
 import socket
 import random
 
-# ОБНОВЛЕННЫЕ СТАБИЛЬНЫЕ ИСТОЧНИКИ
+#public sources . . . DM me (if it possible) if you are the copyright holder and do not allow this to be distributed.
 SOURCES = [
     "https://raw.githubusercontent.com/vfarid/v2ray-share/main/all.txt",
     "https://raw.githubusercontent.com/BardiaFA/Proxy-Collector/main/sub/sub_merge.txt",
@@ -15,7 +15,7 @@ SOURCES = [
 ]
 
 OUTPUT_FILE = "scr.txt"
-HEADER = "# profile-title: 🏳️ Белые списки | PUBLIC | @freedomprotocol_bot\n"
+HEADER = "# profile-title: 🏳️ Белый Семаха\n"
 EMOJIS = ["🎊", "⚡", "🔥", "🔮", "✨"]
 
 def get_ping(host, port):
