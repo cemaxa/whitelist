@@ -2,7 +2,7 @@ name: Update VPN Keys / RU-whitelist
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # Обновление каждые 4 часа
+    - cron: '0 */3 * * *' # Обновление каждые 3 часа
   workflow_dispatch: # Кнопка для ручного запуска
 
 permissions:
