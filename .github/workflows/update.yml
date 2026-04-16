@@ -1,4 +1,4 @@
-name: update vpn suka
+name: update keys . . .
 
 on:
   schedule:
@@ -14,8 +14,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -35,8 +33,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add scr.txt public_scr.txt
-          # Фиксируем изменения, чтобы pull не ругался на грязный индекс
-          git commit -m "Auto-update: All keys" || exit 0
-          # Подтягиваем изменения из репозитория, если они были
-          git pull origin main --rebase
-          git push origin main
+          # Коммитим, если есть изменения
+          git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M')" || exit 0
+          # Пушим с флагом --force-with-lease, чтобы точно перетереть возможные затыки
+          git push origin main --force-with-lease
