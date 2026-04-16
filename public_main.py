@@ -2,9 +2,9 @@ import requests
 import re
 import base64
 import time
+import socket
 from urllib.parse import urlparse, quote
 
-#public key database | DM me if you are the copyright holder and do not allow this to be distributed. . .
 SOURCES = [
     "https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub",
     "https://raw.githubusercontent.com/freefq/free/master/v2",
@@ -12,72 +12,63 @@ SOURCES = [
 ]
 OUTPUT_FILE = "public_scr.txt"
 
-country_cache = {}
-
-def get_country_ru(ip):
-    if not ip: return "Неизвестно"
-    if ip in country_cache: return country_cache[ip]
-    
+def get_ping(host, port):
     try:
-        #translate RU
+        start = time.time()
+        socket.setdefaulttimeout(1.5)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, port))
+        s.close()
+        return int((time.time() - start) * 1000)
+    except:
+        return 9999
+
+def get_country_ru(ip, cache):
+    if ip in cache: return cache[ip]
+    try:
         resp = requests.get(f"http://ip-api.com/json/{ip}?lang=ru", timeout=2).json()
         country = resp.get("country", "Неизвестно")
-        
-        country_cache[ip] = country
-        time.sleep(1.4) #def
+        cache[ip] = country
+        time.sleep(1.4)
         return country
     except:
         return "Неизвестно"
-
-def safe_decode(data):
-    try:
-        return base64.b64decode(data).decode('utf-8')
-    except:
-        return data
 
 def process():
     all_raw_text = ""
     for url in SOURCES:
         try:
             r = requests.get(url, timeout=10)
-            all_raw_text += "\n" + safe_decode(r.text)
-        except:
-            continue
+            all_raw_text += "\n" + (base64.b64decode(r.text).decode('utf-8') if "://" not in r.text else r.text)
+        except: continue
 
-    found_keys = re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', all_raw_text)
-    unique_keys = list(set(found_keys))
-    
-    print(f"Найдено уникальных ключей: {len(unique_keys)}")
-    
-    processed_list = []
-    
-    #checking first 150 servers
-    for key in unique_keys[:150]:
+    found_keys = list(set(re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', all_raw_text)))
+    results = []
+    country_cache = {}
+
+    print(f"Тестируем публичные серверы...")
+    for key in found_keys[:250]:
         try:
             base_part = key.split("#")[0]
-            
-            if key.startswith("vmess://"):
-                new_name = "VMESS Публичный Семаха | Неизвестно"
-                processed_list.append(f"{base_part}#{quote(new_name)}")
-                continue
-                
             parsed = urlparse(base_part)
-            host = parsed.hostname
+            if not parsed.hostname: continue
             
-            country_ru = get_country_ru(host)
-            proto = parsed.scheme.upper()
-            
-            #output 
-            new_name = f"{proto} Публичный Семаха | {country_ru}"
-            processed_list.append(f"{base_part}#{quote(new_name)}")
-            
-        except Exception:
-            continue
+            ping_time = get_ping(parsed.hostname, parsed.port or 443)
+            if ping_time < 2000:
+                results.append({"key": base_part, "ping": ping_time, "proto": parsed.scheme.upper(), "host": parsed.hostname})
+        except: continue
+
+    results.sort(key=lambda x: x["ping"])
+    top_100 = results[:100]
+
+    processed_list = []
+    for item in top_100:
+        country = get_country_ru(item["host"], country_cache)
+        new_name = f"{item['proto']} Публичный Семаха | {country}"
+        processed_list.append(f"{item['key']}#{quote(new_name)}")
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write("\n".join(processed_list))
-        
-    print(f"Сохранено публичных серверов: {len(processed_list)}")
 
 if __name__ == "__main__":
     process()
