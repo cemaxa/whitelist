@@ -1,16 +1,17 @@
-import requests, re, base64, time, socket
-from urllib.parse import urlparse
+import requests, re, base64, time, socket, random
 
 SOURCES = [
     "https://raw.githubusercontent.com/vfarid/v2ray-share/main/all.txt",
     "https://raw.githubusercontent.com/BardiaFA/Proxy-Collector/main/sub/sub_merge.txt",
     "https://raw.githubusercontent.com/IranianCypherpunks/sub/main/sub",
-    "https://raw.githubusercontent.com/sarinaesmailzadeh/V2ray-Configs/main/All_Configs_Sub.txt",
+    "https://raw.githubusercontent.com/Epodonios/vless-subscription/main/vless_sub.txt",
     "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile.txt"
 ]
 
-OUTPUT_FILE = "public_scr.txt"
-HEADER = "# profile-title: 🌐 Public VPN | @freedomprotocol_bot\n"
+OUTPUT_FILE = "scr.txt"
+#output header
+HEADER = "# profile-title: 🏳️ Белый Семаха\n"
+EMOJIS = ["🎊", "⚡", "🔥", "🔮", "✨"]
 
 def get_ping(host, port):
     try:
@@ -34,45 +35,48 @@ def get_country_flag(ip, cache):
     except: return "🌐"
 
 def process():
-    all_raw_text = ""
+    raw_data = ""
     for url in SOURCES:
         try:
             r = requests.get(url, timeout=15)
-            text = r.text
-            if "://" not in text[:50]:
-                try: text = base64.b64decode(text).decode('utf-8')
+            t = r.text
+            if "://" not in t[:50]:
+                try: t = base64.b64decode(t).decode('utf-8')
                 except: pass
-            all_raw_text += "\n" + text
+            raw_data += "\n" + t
         except: continue
 
-    all_keys = list(set(re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', all_raw_text)))
+    keys = list(set(re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', raw_data)))
     results = []
-    country_cache = {}
+    cache = {}
 
-    for key in all_keys:
-        if len(results) >= 150: break
+    for key in keys:
+        if len(results) >= 120: break
+        # Исключаем Trojan для работы через ТСПУ
+        if key.startswith("trojan://"): continue
+        
         try:
-            base_part = key.split("#")[0]
-            parsed = urlparse(base_part)
-            if parsed.scheme.lower() == "trojan": continue # Trojan не берем
-            if not parsed.hostname: continue
-            
-            port = parsed.port if parsed.port else 443
-            ping = get_ping(parsed.hostname, port)
-            if ping < 4500:
-                results.append({"key": base_part, "ping": ping, "proto": parsed.scheme.upper(), "host": parsed.hostname})
+            clean = key.split("#")[0]
+            if "@" in clean:
+                addr = clean.split("@")[1].split("?")[0]
+                host = addr.split(":")[0]
+                port = int(addr.split(":")[1]) if ":" in addr else 443
+                p = get_ping(host, port)
+                if p < 4000:
+                    proto = clean.split("://")[0].upper()
+                    results.append({"key": clean, "ping": p, "proto": proto, "host": host})
         except: continue
 
     results.sort(key=lambda x: x["ping"])
-    processed_list = []
-    for item in results[:100]:
-        flag = get_country_flag(item["host"], country_cache)
-        # Формат: [Флаг] [Протокол] | Public | @freedomprotocol_bot
-        new_name = f"{flag} {item['proto']} | Public | @freedomprotocol_bot"
-        processed_list.append(f"{item['key']}#{new_name}")
+    final = []
+    for i, item in enumerate(results[:100], 1):
+        flag = get_country_flag(item["host"], cache)
+        # Названия без кодирования символов
+        name = f"{flag} {item['proto']} {random.choice(EMOJIS)} Семаха [{i}]"
+        final.append(f"{item['key']}#{name}")
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write(HEADER + "\n".join(processed_list))
+        f.write(HEADER + "\n".join(final))
 
 if __name__ == "__main__":
     process()
