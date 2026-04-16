@@ -1,18 +1,31 @@
 import requests, re, base64, time, socket, random
 from urllib.parse import urlparse
 
-#i love puppies <3
-SOURCES = [
+# Спасибо https://t.me/outlineOpenKey за общедоступные ключи <3 
+# Канал для парсинга и пара проверенных бэкап-ссылок
+TG_CHANNELS = ["outlineOpenKey", "v2rayng_org"] 
+BACKUP_SOURCES = [
     "https://raw.githubusercontent.com/yebekhe/TelegramV2rayCollector/main/sub/normal/mix",
-    "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/E99_Sub_Merge.txt",
-    "https://raw.githubusercontent.com/LalatinaHub/Mineral/master/result/nodes",
-    "https://raw.githubusercontent.com/vfarid/v2ray-share/main/all.txt",
-    "https://raw.githubusercontent.com/sashalsfk/V2Ray-Config/main/splited/vless.txt", # Свежий сплит
-    "https://raw.githubusercontent.com/manyafit/Manya-V2ray-Collector/main/sub/mix" # Агрессивный скрапер
+    "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/E99_Sub_Merge.txt"
 ]
 
 OUTPUT_FILE = "public_scr.txt"
 HEADER = "# profile-title: 🌐 Публичный Семаха\n"
+
+def get_tg_keys(channel):
+    """Парсит ключи прямо из веб-версии телеграм канала"""
+    keys = []
+    try:
+        url = f"https://t.me/s/{channel}"
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+        r = requests.get(url, headers=headers, timeout=15)
+        # Ищем протоколы в тексте сообщений
+        found = re.findall(r'(?:vless|vmess|ss)://[^\s<"\'&]+', r.text)
+        keys.extend(found)
+        print(f"Из канала @{channel} получено {len(found)} потенциальных ключей.")
+    except Exception as e:
+        print(f"Ошибка парсинга TG {channel}: {e}")
+    return keys
 
 def get_ping(host, port):
     try:
@@ -24,67 +37,54 @@ def get_ping(host, port):
         return int((time.time() - start) * 1000)
     except: return 9999
 
-def get_country_flag(ip, cache):
-    if ip in cache: return cache[ip]
-    try:
-        time.sleep(1.1)
-        resp = requests.get(f"http://ip-api.com/json/{ip}?fields=status,countryCode", timeout=4).json()
-        if resp.get('status') == 'success':
-            code = resp.get('countryCode', 'UN')
-            flag = "".join(chr(127397 + ord(c)) for c in code)
-            cache[ip] = flag
-            return flag
-    except: pass
-    return "🌐"
-
 def process():
-    raw_data = ""
-    for url in SOURCES:
-        try:
-            r = requests.get(url, timeout=25, verify=False)
-            t = r.text
-            if "://" not in t[:50]:
-                try: t = base64.b64decode(t).decode('utf-8')
-                except: pass
-            raw_data += "\n" + t
-        except: continue
+    all_raw_keys = []
+    
+    # 1. Тянем из ТГ каналов (приоритет)
+    for chan in TG_CHANNELS:
+        all_raw_keys.extend(get_tg_keys(chan))
+    
+    # 2. Если из ТГ пришло мало, добираем из бэкапов
+    if len(all_raw_keys) < 50:
+        for url in BACKUP_SOURCES:
+            try:
+                r = requests.get(url, timeout=15)
+                content = r.text
+                if "://" not in content[:50]:
+                    content = base64.b64decode(content).decode('utf-8')
+                all_raw_keys.extend(re.findall(r'(?:vless|vmess|ss)://[^\s]+', content))
+            except: continue
 
-    # Собираем всё, кроме Trojan
-    all_keys = list(set(re.findall(r'(?:vless|vmess|ss)://[^\s]+', raw_data)))
+    all_keys = list(set(all_raw_keys))
     random.shuffle(all_keys)
     
     results = []
-    cache = {}
-    print(f"Поиск среди {len(all_keys)} ключей...")
+    print(f"Начинаю проверку {len(all_keys)} уникальных ключей...")
 
     for key in all_keys:
-        if len(results) >= 80: break # Сделаем 80, но качественных
-        
+        if len(results) >= 100: break
         try:
-            # Очищаем ссылку от мусора в названии
-            clean_url = key.split("#")[0]
+            # Убираем лишнее (иногда в ТГ ссылках остаются HTML-сущности)
+            clean_url = key.split('<')[0].split('"')[0].split('#')[0]
             parsed = urlparse(clean_url)
             host = parsed.hostname
             if not host or host.startswith('127.'): continue
             
             port = parsed.port if parsed.port else 443
-            
-            ping = get_ping(host, port)
-            if ping < 3000: # Порог 3 сек — паблик быстрее редко работает
-                results.append({"key": clean_url, "proto": parsed.scheme.upper(), "host": host})
-                if len(results) % 5 == 0: print(f"Найдено: {len(results)}...")
+            if get_ping(host, port) < 4000:
+                results.append({"key": clean_url, "proto": parsed.scheme.upper()})
+                if len(results) % 10 == 0: print(f"Живых: {len(results)}/100")
         except: continue
 
     final = []
     for item in results:
-        flag = get_country_flag(item["host"], cache)
-        # Название делаем максимально коротким и понятным
-        name = f"{flag} {item['proto']}-PUB"
+        # Для паблика упростим имена, чтобы не тратить время на API флагов (иногда оно тормозит)
+        name = f"🌐 {item['proto']}-Public"
         final.append(f"{item['key']}#{name}")
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(HEADER + "\n".join(final))
-    print(f"Готово! В файле {len(final)} ключей.")
+    print(f"Успех! Файл обновлен. Найдено живых: {len(final)}")
 
 if __name__ == "__main__":
     process()
