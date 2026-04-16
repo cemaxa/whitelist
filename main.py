@@ -5,25 +5,24 @@ import time
 import socket
 import random
 
-# Максимально стабильные и живые источники
+# Источники с высоким приоритетом VLESS
 SOURCES = [
     "https://raw.githubusercontent.com/vfarid/v2ray-share/main/all.txt",
     "https://raw.githubusercontent.com/BardiaFA/Proxy-Collector/main/sub/sub_merge.txt",
     "https://raw.githubusercontent.com/tbbatbb/Proxy/master/dist/vless.config",
-    "https://raw.githubusercontent.com/Epodonios/vless-subscription/main/vless_sub.txt",
-    "https://raw.githubusercontent.com/LalatinaHub/Mineral/master/result/nodes",
     "https://raw.githubusercontent.com/IranianCypherpunks/sub/main/sub",
+    "https://raw.githubusercontent.com/Epodonios/vless-subscription/main/vless_sub.txt",
     "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile.txt"
 ]
 
 OUTPUT_FILE = "scr.txt"
 HEADER = "# profile-title: 🏳️ Белые списки | PUBLIC | @freedomprotocol_bot\n"
-EMOJIS = ["🎊", "⚡", "🔥", "🔮", "✨"]
+EMOJIS = ["👾", "⚡", "🔥", "🔮", "✨"]
 
 def get_ping(host, port):
     try:
         start = time.time()
-        socket.setdefaulttimeout(2.0)
+        socket.setdefaulttimeout(2.5) # Смягчили таймаут
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
         s.close()
@@ -38,7 +37,7 @@ def get_country_flag(ip, cache):
         code = resp.get("countryCode", "UN")
         flag = "".join(chr(127397 + ord(c)) for c in code) if code != "UN" else "🌐"
         cache[ip] = flag
-        time.sleep(1.1) # Чтобы API не забанило
+        time.sleep(1.2) # Пауза, чтобы API не заблокировало
         return flag
     except:
         return "🌐"
@@ -47,29 +46,31 @@ def process():
     all_raw_text = ""
     for url in SOURCES:
         try:
-            print(f"Загружаю: {url}")
             r = requests.get(url, timeout=15)
             text = r.text
-            # Проверка на Base64 (некоторые подписки шифруют весь файл)
             if "://" not in text[:50]:
                 try: text = base64.b64decode(text).decode('utf-8')
                 except: pass
             all_raw_text += "\n" + text
         except: continue
 
-    # Ищем ключи во всем тексте
+    # Ищем все протоколы
     found_keys = list(set(re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', all_raw_text)))
-    print(f"Найдено ключей: {len(found_keys)}. Начинаю проверку...")
+    print(f"Найдено всего ключей: {len(found_keys)}. Начинаю проверку...")
     
     results = []
     country_cache = {}
 
     for key in found_keys:
-        if len(results) >= 150: break # Проверяем, пока не наберем базу
+        if len(results) >= 130: break # Собираем с запасом
         try:
+            # ФИЛЬТР: Никаких Trojan
+            if key.startswith("trojan://"):
+                continue
+
             clean_key = key.split("#")[0]
             
-            # Парсим адрес для пинга
+            # Парсим хост и порт
             if "@" in clean_key:
                 addr_part = clean_key.split("@")[1].split("?")[0]
                 host = addr_part.split(":")[0]
@@ -77,12 +78,12 @@ def process():
             else: continue
 
             ping_time = get_ping(host, port)
-            if ping_time < 3500: # Берем все живое до 3.5 сек
+            if ping_time < 4500: # Берем все, что подает признаки жизни
                 proto = clean_key.split("://")[0].upper()
                 results.append({"key": clean_key, "ping": ping_time, "proto": proto, "host": host})
-                print(f"Живой: {host} ({ping_time}ms)")
         except: continue
 
+    # Сортируем по скорости и берем 100 лучших
     results.sort(key=lambda x: x["ping"])
     top_100 = results[:100]
 
@@ -90,14 +91,14 @@ def process():
     for i, item in enumerate(top_100, 1):
         flag = get_country_flag(item["host"], country_cache)
         emoji = random.choice(EMOJIS)
-        # Название теперь БЕЗ quote(), сразу текстом
+        # Формат: [Флаг] [Протокол] [Эмодзи] Семаха [Номер]
         new_name = f"{flag} {item['proto']} {emoji} Семаха [{i}]"
         processed_list.append(f"{item['key']}#{new_name}")
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(HEADER + "\n".join(processed_list))
     
-    print(f"Успех! Сохранено 100 лучших серверов.")
+    print(f"Готово! Сохранено рабочих ключей: {len(processed_list)}")
 
 if __name__ == "__main__":
     process()
