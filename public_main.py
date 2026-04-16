@@ -1,84 +1,80 @@
-import requests, re, base64, random, time
+import requests, re, random, time, os
 from urllib.parse import urlparse
 
-# Основной и единственный источник качества
 CHANNEL = "outlineOpenKey"
+ID_FILE = "last_id.txt"
 OUTPUT_FILE = "public_scr.txt"
-
-#output header
 HEADER = "# profile-title: 🔮 Публичный Семаха\n\n"
 EMOJI_POOL = ["🔮", "🌑", "👾", "🎊", "✨", "🎉", "🎀", "🪄", "🪬", "💣", "🍖", "⚡", "🔥", "🌠"]
 
-def get_country_flag(ip, cache):
-    if ip in cache: return cache[ip]
+def get_country_flag(ip):
     try:
-        # Небольшая задержка для стабильности API
-        time.sleep(1.1)
-        resp = requests.get(f"http://ip-api.com/json/{ip}?fields=status,countryCode", timeout=5).json()
-        if resp.get('status') == 'success':
-            code = resp.get('countryCode', 'UN')
-            flag = "".join(chr(127397 + ord(c)) for c in code)
-            cache[ip] = flag
-            return flag
-    except: pass
-    return "🌐"
+        resp = requests.get(f"http://ip-api.com/json/{ip}?fields=countryCode", timeout=5).json()
+        code = resp.get('countryCode', 'UN')
+        return "".join(chr(127397 + ord(c)) for c in code)
+    except: return "🌐"
+
+def parse_post(post_id):
+    """Проверяет пост по ID и ищет в нем ключ"""
+    try:
+        url = f"https://t.me/{CHANNEL}/{post_id}?embed=1"
+        r = requests.get(url, timeout=10)
+        if r.status_code != 200: return None
+        
+        found = re.findall(r'(?:vless|vmess|ss)://[^\s<"\'&|]+', r.text)
+        return found[0] if found else None
+    except: return None
 
 def process():
+    # 1. Читаем последний ID
+    if os.path.exists(ID_FILE):
+        with open(ID_FILE, "r") as f:
+            last_id = int(f.read().strip())
+    else:
+        last_id = 7689 # here we started
+
+    # 2. Проверяем следующий пост
+    next_id = last_id + 1
+    new_key = parse_post(next_id)
+
+    if not new_key:
+        print(f"Нового ключа в посте {next_id} пока нет. Ждем.")
+        return
+
+    print(f"Нашел новый ключ в посте {next_id}!")
+
+    # 3. Читаем текущий список серверов
+    current_servers = []
+    if os.path.exists(OUTPUT_FILE):
+        with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            # Пропускаем заголовок и берем только строки с ключами
+            current_servers = [l.strip() for l in lines if "://" in l]
+
+    # 4. Формируем новый сервер
     try:
-        # Парсим веб-версию канала
-        url = f"https://t.me/s/{CHANNEL}"
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-        r = requests.get(url, headers=headers, timeout=15)
+        clean_url = new_key.split('#')[0]
+        host = urlparse(clean_url).hostname
+        proto = urlparse(clean_url).scheme.upper()
+        flag = get_country_flag(host)
+        emoji = random.choice(EMOJI_POOL)
+        formatted_entry = f"{clean_url}#{flag} {proto} | Публичный Семаха {emoji}"
         
-        # Находим все ключи vless, vmess, ss
-        found_keys = re.findall(r'(?:vless|vmess|ss)://[^\s<"\'&|]+', r.text)
-        
-        # Переворачиваем, чтобы последние (самые свежие из ТГ) стали первыми в списке
-        found_keys.reverse()
-        
-        # Убираем дубликаты, сохраняя порядок
-        seen = set()
-        final_raw_keys = []
-        for k in found_keys:
-            clean_base = k.split('#')[0]
-            if clean_base not in seen:
-                final_raw_keys.append(k)
-                seen.add(clean_base)
-        
-        # Берем ровно 10 последних
-        top_10 = final_raw_keys[:10]
-        
-        final_lines = []
-        cache = {}
-        
-        print(f"Обрабатываю {len(top_10)} свежих ключей из @{CHANNEL}...")
-
-        for key in top_10:
-            try:
-                clean_url = key.split('#')[0]
-                parsed = urlparse(clean_url)
-                host = parsed.hostname
-                proto = parsed.scheme.upper()
-                
-                if not host: continue
-                
-                # Получаем флаг и выбираем случайное эмодзи
-                flag = get_country_flag(host, cache)
-                emoji = random.choice(EMOJI_POOL)
-                
-                # Формат: [Флаг] [Протокол] | Публичный Семаха [Эмодзи]
-                name = f"{flag} {proto} | Публичный Семаха {emoji}"
-                final_lines.append(f"{clean_url}#{name}")
-            except: continue
-
-        # Запись в файл
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-            f.write(HEADER + "\n".join(final_lines))
+        # Добавляем новый, удаляем самый старый (первый), если их уже 10
+        current_servers.append(formatted_entry)
+        if len(current_servers) > 10:
+            current_servers.pop(0)
             
-        print(f"Готово! В файл записано {len(final_lines)} серверов.")
-
+        # 5. Сохраняем результаты
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            f.write(HEADER + "\n".join(current_servers))
+            
+        with open(ID_FILE, "w") as f:
+            f.write(str(next_id))
+            
+        print(f"Список обновлен. Теперь последний ID: {next_id}")
     except Exception as e:
-        print(f"Критическая ошибка: {e}")
+        print(f"Ошибка при обработке: {e}")
 
 if __name__ == "__main__":
     process()
