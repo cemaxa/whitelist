@@ -17,7 +17,7 @@ SOURCES = [
 
 OUTPUT_FILE = "scr.txt"
 HEADER = "# profile-title: 🏳️ Белый Семаха\n"
-EMOJIS = ["🚀", "⚡", "🔥", "💎", "✨"]
+EMOJIS = ["🌑", "⚡", "🔥", "🔮", "✨"]
 
 def get_ping(host, port):
     try:
