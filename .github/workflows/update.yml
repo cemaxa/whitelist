@@ -2,8 +2,11 @@ name: Update VPN Keys / RU-whitelist
 
 on:
   schedule:
-    - cron: '0 */3 * * *'
-  workflow_dispatch:
+    - cron: '0 */3 * * *' #every 3hrs
+  workflow_dispatch: #action button
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -11,6 +14,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -28,5 +33,6 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add scr.txt
-          git commit -m "Auto-update keys" || exit 0
+          git pull --rebase origin main
+          git commit -m "Auto-update main keys" || exit 0
           git push
