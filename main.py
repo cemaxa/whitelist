@@ -1,7 +1,7 @@
 import requests, re, base64, time, socket, random
 from urllib.parse import urlparse, parse_qs
 
-# Расширенные источники (много VLESS/Reality)
+#public keys 
 SOURCES = [
     "https://raw.githubusercontent.com/vfarid/v2ray-share/main/all.txt",
     "https://raw.githubusercontent.com/BardiaFA/Proxy-Collector/main/sub/sub_merge.txt",
@@ -11,37 +11,13 @@ SOURCES = [
     "https://raw.githubusercontent.com/yebekhe/TelegramV2rayCollector/main/sub/normal/mix",
     "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/E99_Sub_Merge.txt",
     "https://raw.githubusercontent.com/ALIILAPRO/v2rayNG-Config/main/sub.txt",
-    "https://raw.githubusercontent.com/Aisuko/V2ray-Config/main/sub"
+    "https://raw.githubusercontent.com/Aisuko/V2ray-Config/main/sub",
+    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile.txt"
 ]
 
 OUTPUT_FILE = "scr.txt"
 HEADER = "# profile-title: 🏳️ Белый Семаха\n"
-EMOJIS = ["🔮", "⚡", "🔥", "👾", "✨"]
-
-def is_anti_dpi(key_url):
-    """
-    Проверяет, использует ли ключ технологии маскировки от ТСПУ.
-    Если это простой TCP/TLS - возвращает False.
-    """
-    try:
-        parsed = urlparse(key_url)
-        params = parse_qs(parsed.query)
-        
-        # Получаем параметры безопасности и типа сети
-        security = params.get('security', [''])[0].lower()
-        net_type = params.get('type', [''])[0].lower()
-        flow = params.get('flow', [''])[0].lower()
-        
-        # XTLS-Vision, Reality, gRPC и WebSocket (WS) хорошо живут в РФ
-        if security == 'reality': return True
-        if 'vision' in flow: return True
-        if net_type in ['grpc', 'ws']: return True
-        
-        # Если это Shadowsocks, он должен быть с плагином (но парсить его сложнее, 
-        # поэтому для РФ лучше делать упор на VLESS/Reality).
-        return False
-    except:
-        return False
+EMOJIS = ["🚀", "⚡", "🔥", "💎", "✨"]
 
 def get_ping(host, port):
     try:
@@ -78,7 +54,8 @@ def process():
             raw_data += "\n" + t
         except: continue
 
-    all_keys = list(set(re.findall(r'(?:vless|vmess|ss|trojan)://[^\s]+', raw_data)))
+    # Ищем VLESS, SS, Hysteria и Hysteria2
+    all_keys = list(set(re.findall(r'(?:vless|ss|hysteria2?)://[^\s]+', raw_data)))
     random.shuffle(all_keys)
     
     results = []
@@ -88,26 +65,55 @@ def process():
 
     for key in all_keys:
         if len(results) >= 100: break
-        if key.startswith("trojan://"): continue
         
         clean = key.split("#")[0]
         
-        # 1. СНАЧАЛА проверяем начинку ключа на устойчивость к ТСПУ
-        if not is_anti_dpi(clean):
-            continue
-            
-        # 2. ПОТОМ проверяем, жив ли он вообще (пингуем)
         try:
-            if "@" in clean:
-                addr = clean.split("@")[1].split("?")[0]
-                host = addr.split(":")[0]
-                port = int(addr.split(":")[1]) if ":" in addr else 443
+            parsed = urlparse(clean)
+            scheme = parsed.scheme.lower()
+            
+            # --- 1. ПРОВЕРКА SNI ДЛЯ VLESS ---
+            if scheme == "vless":
+                params = parse_qs(parsed.query)
+                sni = params.get('sni', [''])[0].lower()
+                # Регулярка ищет окончание на .ru, .рф, .ру или .su
+                if not re.search(r'\.(ru|рф|ру|su)$', sni):
+                    continue # Скипаем, если домен не российский
+            
+            # --- 2. ИЗВЛЕЧЕНИЕ ХОСТА И ПОРТА ДЛЯ ПИНГА ---
+            host, port = None, None
+            netloc = parsed.netloc
+            
+            if scheme == 'ss':
+                # У Shadowsocks параметры могут быть в Base64
+                if '@' in netloc:
+                    hp = netloc.split('@')[-1]
+                else:
+                    padding = "=" * ((4 - len(netloc) % 4) % 4)
+                    dec = base64.urlsafe_b64decode(netloc + padding).decode('utf-8')
+                    hp = dec.split('@')[-1] if '@' in dec else None
                 
-                if get_ping(host, port) < 3500:
-                    proto = clean.split("://")[0].upper()
-                    results.append({"key": clean, "proto": proto, "host": host})
-                    if len(results) % 10 == 0: print(f"Прошли DPI-контроль и пинг: {len(results)}/100")
-        except: continue
+                if hp and ':' in hp:
+                    host, port = hp.rsplit(':', 1)
+                    port = int(port)
+            else:
+                # Для VLESS и Hysteria
+                if '@' in netloc:
+                    hp = netloc.split('@')[-1]
+                    if ':' in hp:
+                        host, port = hp.rsplit(':', 1)
+                        port = int(port)
+            
+            if not host or not port: continue
+            
+            # --- 3. ФИНАЛЬНЫЙ ПИНГ ---
+            if get_ping(host, port) < 3500:
+                results.append({"key": clean, "proto": scheme.upper(), "host": host})
+                if len(results) % 10 == 0: 
+                    print(f"Годен: {scheme.upper()} ({host}) | {len(results)}/100")
+                    
+        except Exception as e:
+            continue
 
     final = []
     for i, item in enumerate(results, 1):
@@ -118,7 +124,7 @@ def process():
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(HEADER + "\n".join(final))
-    print(f"Готово! В Белый Семаха добавлено {len(final)} бронебойных ключей.")
+    print(f"Готово! В Белый Семаха добавлено {len(final)} ключей с маскировкой под РФ.")
 
 if __name__ == "__main__":
     process()
