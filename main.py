@@ -1,6 +1,6 @@
-import requests, re, base64, os
+import requests, re, base64, os, socket, time
+from urllib.parse import urlparse
 
-# Твои источники для "Белого Семахи"
 SOURCES = [
     "https://raw.githubusercontent.com/yebekhe/TelegramV2rayCollector/main/sub/normal/mix",
     "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/E99_Sub_Merge.txt",
@@ -10,21 +10,45 @@ SOURCES = [
 OUTPUT_FILE = "scr.txt"
 HEADER = "# profile-title: 🛡️ Белый Семаха (Anti-DPI)\n\n"
 
-def is_anti_dpi(key):
-    """Проверка на наличие защиты от ТСПУ (Reality или Vision)"""
-    return "reality" in key.lower() or "xtls-rprx-vision" in key.lower()
+# Список разрешенных доменных зон и доменов для маскировки (SNI)
+ALLOWED_SNI = ['.ru', '.by', '.su', 'vk.com', 'yandex', 'mail.ru', 'gosuslugi', 'ozon', 'avito']
+
+def get_ping(host, port):
+    try:
+        socket.setdefaulttimeout(3.0)
+        start = time.time()
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, int(port)))
+        s.close()
+        return int((time.time() - start) * 1000)
+    except: return None
+
+def is_valid_anti_dpi(key):
+    """Проверка: Reality/Vision + фильтр по SNI (RU-зоны)"""
+    key_lower = key.lower()
+    # 1. Проверка протокола
+    if not ("reality" in key_lower or "xtls-rprx-vision" in key_lower):
+        return False
+    
+    # 2. Проверка SNI (маскировки)
+    # Ищем параметры sni= или sni: в ссылке
+    sni_match = re.search(r'sni=([^&|#\s]+)', key_lower)
+    if sni_match:
+        sni = sni_match.group(1)
+        if any(zone in sni for zone in ALLOWED_SNI):
+            return True
+    return False
 
 def process():
-    # 1. Загружаем то, что уже есть в файле, чтобы не удалить рабочее
     existing_keys = []
+    # 1. Загружаем старые сервера для перепроверки
     if os.path.exists(OUTPUT_FILE):
         with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
-            # Собираем только сами ссылки, очищая от названий после #
             for line in f:
                 if "://" in line:
                     existing_keys.append(line.strip().split('#')[0])
 
-    # 2. Собираем новые ключи из интернета
+    # 2. Собираем свежие ключи
     raw_data = ""
     for url in SOURCES:
         try:
@@ -34,27 +58,36 @@ def process():
                 content = base64.b64decode(content).decode('utf-8')
             raw_data += "\n" + content
         except: continue
-
+    
     found_keys = re.findall(r'(?:vless|vmess|ss)://[^\s]+', raw_data)
     
-    new_added = 0
-    # 3. Фильтруем и добавляем только уникальные Anti-DPI ключи
-    with open(OUTPUT_FILE, "a", encoding="utf-8") as f:
-        # Если файл был пустой, пишем заголовок (проверка на размер)
-        if os.path.getsize(OUTPUT_FILE) < 10:
-            f.write(HEADER)
+    # Объединяем старые и новые для тотальной проверки
+    all_to_check = list(set(existing_keys + found_keys))
+    final_list = []
+    
+    print(f"Всего на проверке: {len(all_to_check)} ключей...")
 
-        for key in found_keys:
-            clean_key = key.split('#')[0]
-            # Если ключа нет в базе И он проходит фильтр ТСПУ
-            if clean_key not in existing_keys and is_anti_dpi(clean_key):
-                # Формируем название с пометкой защиты
-                name = "🛡️ Anti-DPI | @freedomprotocol_bot"
-                f.write(f"{clean_key}#{name}\n")
-                existing_keys.append(clean_key) # Чтобы не дублировать в одном цикле
-                new_added += 1
+    for key in all_to_check:
+        # Проверяем на ТСПУ-фильтр и SNI
+        if is_valid_anti_dpi(key):
+            try:
+                parsed = urlparse(key.split('#')[0])
+                host = parsed.hostname
+                port = parsed.port if parsed.port else 443
+                
+                # Пингуем во второй раз (или первый, если новый)
+                if get_ping(host, port):
+                    name = "🛡️ RU-AntiDPI | @freedomprotocol_bot"
+                    final_list.append(f"{key.split('#')[0]}#{name}")
+                    if len(final_list) % 5 == 0:
+                        print(f"Рабочих найдено: {len(final_list)}")
+            except: continue
 
-    print(f"Готово! В Белый Семаха добавлено {new_added} новых Anti-DPI серверов. Старые сохранены.")
+    # 3. Полная перезапись файла только РАБОЧИМИ и проверенными ключами
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        f.write(HEADER + "\n".join(final_list))
+
+    print(f"Обновление завершено! Сохранено {len(final_list)} живых серверов с RU-маскировкой.")
 
 if __name__ == "__main__":
     process()
