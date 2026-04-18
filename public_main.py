@@ -9,18 +9,17 @@ EMOJI_POOL = ["🔮", "🌑", "👾", "🎊", "✨", "🎉", "🎀", "🪄", "�
 
 def get_country_flag(ip):
     try:
+        # Ускоренный запрос флага
         resp = requests.get(f"http://ip-api.com/json/{ip}?fields=countryCode", timeout=5).json()
         code = resp.get('countryCode', 'UN')
         return "".join(chr(127397 + ord(c)) for c in code)
     except: return "🌐"
 
 def parse_post(post_id):
-    """Проверяет пост по ID и ищет в нем ключ"""
     try:
         url = f"https://t.me/{CHANNEL}/{post_id}?embed=1"
         r = requests.get(url, timeout=10)
         if r.status_code != 200: return None
-        
         found = re.findall(r'(?:vless|vmess|ss)://[^\s<"\'&|]+', r.text)
         return found[0] if found else None
     except: return None
@@ -31,50 +30,60 @@ def process():
         with open(ID_FILE, "r") as f:
             last_id = int(f.read().strip())
     else:
-        last_id = 7689 # here we started
+        last_id = 7689
 
-    # 2. Проверяем следующий пост
-    next_id = last_id + 1
-    new_key = parse_post(next_id)
-
-    if not new_key:
-        print(f"Нового ключа в посте {next_id} пока нет. Ждем.")
-        return
-
-    print(f"Нашел новый ключ в посте {next_id}!")
-
-    # 3. Читаем текущий список серверов
-    current_servers = []
+    # 2. Читаем текущий список, чтобы не дублировать
+    current_content = []
     if os.path.exists(OUTPUT_FILE):
         with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-            # Пропускаем заголовок и берем только строки с ключами
-            current_servers = [l.strip() for l in lines if "://" in l]
+            current_content = [l.strip() for l in f.readlines() if "://" in l]
 
-    # 4. Формируем новый сервер
-    try:
-        clean_url = new_key.split('#')[0]
-        host = urlparse(clean_url).hostname
-        proto = urlparse(clean_url).scheme.upper()
-        flag = get_country_flag(host)
-        emoji = random.choice(EMOJI_POOL)
-        formatted_entry = f"{clean_url}#{flag} {proto} | Публичный Семаха {emoji}"
+    new_keys_found = 0
+    current_id = last_id + 1
+    
+    # За один запуск проверяем до 50 новых постов (чтобы не пропустить за сутки)
+    print(f"Начинаю поиск новых ключей начиная с ID {current_id}...")
+    
+    while True:
+        new_key = parse_post(current_id)
+        if not new_key:
+            # Если поста нет или в нем нет ключа, проверяем еще 2 вперед (на случай пустых постов)
+            gap_check = False
+            for i in range(1, 3):
+                if parse_post(current_id + i):
+                    gap_check = True
+                    break
+            if not gap_check:
+                break # Реально дошли до конца ленты
         
-        # Добавляем новый, удаляем самый старый (первый), если их уже 10
-        current_servers.append(formatted_entry)
-        if len(current_servers) > 10:
-            current_servers.pop(0)
-            
-        # 5. Сохраняем результаты
+        if new_key:
+            clean_url = new_key.split('#')[0]
+            # Проверяем, нет ли такого ключа уже в файле
+            if not any(clean_url in s for s in current_content):
+                host = urlparse(clean_url).hostname
+                proto = urlparse(clean_url).scheme.upper()
+                flag = get_country_flag(host)
+                emoji = random.choice(EMOJI_POOL)
+                
+                formatted_entry = f"{clean_url}#{flag} {proto} | Публичный Семаха {emoji}"
+                current_content.append(formatted_entry)
+                new_keys_found += 1
+                print(f"Добавлен ключ из поста {current_id}")
+        
+        last_id = current_id
+        current_id += 1
+        if new_keys_found > 30: break # Ограничение за один проход, чтобы не вешать Action
+
+    # 3. Сохраняем (БЕЗ удаления старых)
+    if new_keys_found > 0:
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-            f.write(HEADER + "\n".join(current_servers))
+            f.write(HEADER + "\n".join(current_content))
             
         with open(ID_FILE, "w") as f:
-            f.write(str(next_id))
-            
-        print(f"Список обновлен. Теперь последний ID: {next_id}")
-    except Exception as e:
-        print(f"Ошибка при обработке: {e}")
+            f.write(str(last_id))
+        print(f"Обновление завершено. Добавлено {new_keys_found} новых серверов.")
+    else:
+        print("Новых ключей не обнаружено.")
 
 if __name__ == "__main__":
     process()
