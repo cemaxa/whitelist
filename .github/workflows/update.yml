@@ -1,9 +1,9 @@
-name: key updater
+name: K-Updater
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Запуск каждые 30 минут
-  workflow_dispatch: # Возможность запустить вручную
+    - cron: '0 0 * * *' # Запуск раз в сутки в 00:00 UTC
+  workflow_dispatch: # Оставляем возможность ручного запуска
 
 permissions:
   contents: write
@@ -31,5 +31,6 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add public_scr.txt last_id.txt
-          git commit -m "Update keys from post $(cat last_id.txt)" || exit 0
+          # Коммитим изменения, если они есть
+          git commit -m "Daily update: Added new keys from Telegram" || exit 0
           git push origin main
