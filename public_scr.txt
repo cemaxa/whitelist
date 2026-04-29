@@ -1,12 +1,12 @@
 # profile-title: 🔮 Публичный Семаха
 
-vless://d7f67e94-aa9e-4454-b1cf-ce522a0d2728@172.232.208.147:443#🌐 VLESS | Публичный Семаха 🔥
-ss://YWVzLTI1Ni1nY206MTRDTEJhRkJxd3F4Qkp5Ng==@66.94.125.178:80#🌐 SS | Публичный Семаха 🌠
-ss://YWVzLTI1Ni1nY206ZGFkYTEyMDM=@65.0.104.223:80#🌐 SS | Публичный Семаха 🎀
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTppZE12b2V3clN5TEx2RXZQMDNrOXpS@138.68.153.223:46576#🌐 SS | Публичный Семаха 👾
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpBUmd2R1p5d0ErZ2FjZ0dWMjZCdm11MDUrd1ptUlcvaitBZFUrWjhCdDQ0PQ==@154.205.150.157:990#🌐 SS | Публичный Семаха 💣
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpHNXA2d3c0bzY3SEI=@108.181.0.177:8388#🌐 SS | Публичный Семаха 🌠
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTo3NjRhNGQ4YzFjNzZlYjUw@194.233.73.51:14453#🌐 SS | Публичный Семаха 🪬
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpQRE5jckhiR21iNXU3Nk9nOE5hdGpa@185.117.91.27:21836#🌐 SS | Публичный Семаха ✨
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTo1cHVZYVliYTkxRHlfbmhqUG5PbE1R@172.236.150.119:51515#🌐 SS | Публичный Семаха 🍖
-vless://a34a5f3e-e9fa-40a6-f3af-2984adbd701b@178.104.118.247:2087#🌐 VLESS | Публичный Семаха 🍖
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpRN2NqaVZEMG9LTkUybzlzVW5aS1Fn@46.101.196.138:23243#🌐 SS | Публичный Семаха 👾
+ss://YWVzLTI1Ni1nY206ZGFkYTEyMDM=@15.135.242.15:80#🌐 SS | Публичный Семаха 🪬
+vless://36d85d65-1b57-4cba-a2a6-f61131b08593@45.146.89.35:443#🌐 VLESS | Публичный Семаха ⚡
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp0T0xjaVcyc1FIVTJZQ0tQWkpQVklI@46.246.93.107:12138#🌐 SS | Публичный Семаха 🔥
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpXQzBHYmlDazY3SzhuSERhREhtWUlY@159.223.236.36:19582#🌐 SS | Публичный Семаха 🍖
+vless://36d85d65-1b57-4cba-a2a6-f61131b08593@176.98.186.50:443#🌐 VLESS | Публичный Семаха 🍖
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTplYWZhZDk2ODI2Yzc5ZGRk@163.171.137.76:47394#🌐 SS | Публичный Семаха 🎀
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpXYXdfZldIZTFOODhLN01vbG55VV9R@172.236.152.96:62443#🌐 SS | Публичный Семаха 🪄
+ss://YWVzLTI1Ni1nY206MzE1MDQ2NjU2OGVkYTg3Yg==@195.58.49.26:40210#🌐 SS | Публичный Семаха ⚡
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTozMTJlZTliY2M5NTcwMDk1@163.171.148.71:11201#🌐 SS | Публичный Семаха 🎀
