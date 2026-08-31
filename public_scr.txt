@@ -1,6 +1,5 @@
 # profile-title: 🔮 Публичный Семаха
 
-ss://YWVzLTI1Ni1nY206MzJjMGVhNmU4MjMzNDFhMg@185.22.154.254:8016#🌐 SS | Публичный Семаха 🍖
 ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpWcjA2clVfdjF2RlBZZVhxOXpic0FB@31.210.78.66:1080#🌐 SS | Публичный Семаха 🌑
 ss://YWVzLTEyOC1nY206c2hhZG93c29ja3M=@158.173.20.171:443#🌐 SS | Публичный Семаха ⚡
 ss://YWVzLTEyOC1nY206c2hhZG93c29ja3M=@37.19.198.160:443#🌐 SS | Публичный Семаха 🎊
@@ -10,3 +9,4 @@ ss://YWVzLTI1Ni1nY206YTE3MmNmMGQtYWU4OS00MmYzLTg1MDUtMGM1MWRhZTI5M2Ex@8.210.171.
 vless://7e5e2a1d-6234-4ad0-ab9a-4d918368cbd8@90.156.255.166:36100#🌐 VLESS | Публичный Семаха 🌠
 ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp6ejBkSGpEZm9hU2FadVJGTEdILWhOZkJBTFNFSlVZRA@68.168.222.210:1234#🌐 SS | Публичный Семаха 🍖
 ss://YWVzLTI1Ni1nY206WTZSOXBBdHZ4eHptR0M@92.118.205.211:5600#🌐 SS | Публичный Семаха 🪄
+ss://YWVzLTI1Ni1nY206ZmFCQW9ENTRrODdVSkc3@172.245.235.84:2375#🌐 SS | Публичный Семаха 💣
